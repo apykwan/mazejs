@@ -1,15 +1,17 @@
 // https://brm.io/matter-js/docs/
-import { Engine, Render, Runner, World, Bodies } from 'matter-js'; 
+import { Engine, Render, Runner, World, Bodies, Body } from 'matter-js'; 
 
 import { Grid, NeighborsCoord } from './types';
 
-const cells: number = 3;
+const cells: number = 10;
 const width: number = 600;
 const height: number = 600;
 
 const unitLength: number = width / cells;
 
 const engine = Engine.create();
+engine.gravity.y = 0;
+
 const { world } = engine;
 const render = Render.create({
   element: document.body,
@@ -28,8 +30,8 @@ Runner.run(Runner.create(),engine);
 const walls = [
   Bodies.rectangle(width / 2, 0, width, 40, { isStatic: true }),
   Bodies.rectangle(width / 2, height, width, 40, { isStatic: true }),
-  Bodies.rectangle(0, height / 2, 40, height, { isStatic: true }),
-  Bodies.rectangle(width, width / 2, 40, height, { isStatic: true }),
+  Bodies.rectangle(0, height / 2, 5, height, { isStatic: true }),
+  Bodies.rectangle(width, width / 2, 5, height, { isStatic: true }),
 ];
 
 World.add(world, walls);
@@ -140,4 +142,39 @@ verticals.forEach((row: boolean[], rowIndex: number) => {
     );
     World.add(world, wall);
   });
+});
+
+const goal = Bodies.rectangle(
+  width - unitLength /2,
+  height - unitLength / 2,
+  unitLength * .7,
+  unitLength * .7,
+  {
+    isStatic: true
+  }
+);
+World.add(world, goal);
+
+// Ball
+const ball = Bodies.circle(
+  unitLength / 2,
+  unitLength / 2,
+  unitLength / 4
+);
+World.add(world, ball);
+
+document.addEventListener('keydown', (event: KeyboardEvent) => {
+  const { x, y } = ball.velocity;
+  if (event.key === 'w' || event.key === 'ArrowUp')  {
+    Body.setVelocity(ball, { x, y: y - 5 })
+  }
+  if (event.key === 'd' || event.key === 'ArrowRight') {
+    Body.setVelocity(ball, { x: x + 5, y })
+  }
+  if (event.key === 's' || event.key === 'ArrowDown') {
+    Body.setVelocity(ball, { x, y: y + 5 })
+  }
+  if (event.key === 'a' || event.key === 'ArrowLeft') {
+    Body.setVelocity(ball, { x: x - 5, y })
+  }
 });
