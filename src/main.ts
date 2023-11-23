@@ -1,10 +1,13 @@
 // https://brm.io/matter-js/docs/
 import { Engine, Render, Runner, World, Bodies } from 'matter-js'; 
 
-import { Grid } from './types';
+import { Grid, NeighborsCoord } from './types';
 
-const width = 600;
-const height = 600;
+const cells: number = 3;
+const width: number = 600;
+const height: number = 600;
+
+const unitLength: number = width / cells;
 
 const engine = Engine.create();
 const { world } = engine;
@@ -23,29 +26,118 @@ Runner.run(Runner.create(),engine);
 // Walls
 // Bodieds.Rectangle(x, y, width, height, [options])
 const walls = [
-  Bodies.rectangle(width/2, 0, width, 40, { isStatic: true }),
-  Bodies.rectangle(width/2, height, width, 40, { isStatic: true }),
-  Bodies.rectangle(0, height/2, 40, height, { isStatic: true }),
-  Bodies.rectangle(width, width/2, 40, height, { isStatic: true }),
+  Bodies.rectangle(width / 2, 0, width, 40, { isStatic: true }),
+  Bodies.rectangle(width / 2, height, width, 40, { isStatic: true }),
+  Bodies.rectangle(0, height / 2, 40, height, { isStatic: true }),
+  Bodies.rectangle(width, width / 2, 40, height, { isStatic: true }),
 ];
 
 World.add(world, walls);
 
 
 // Maze Generation
+const shuffle = (arr: NeighborsCoord): NeighborsCoord => {
+  let counter: number = arr.length;
 
-const grid: Grid = Array(3)
+  while (counter > 0) {
+    const index: number = Math.floor(Math.random() * counter);
+
+    counter--;
+
+    const temp = arr[counter];
+    arr[counter] = arr[index];
+    arr[index] = temp;
+  }
+  return arr;
+};
+
+const grid: Grid = Array(cells)
   .fill(null)
-  .map(() => Array(3).fill(false));
+  .map(() => Array(cells).fill(false));
 
-const verticals: Grid = Array(3)
+const verticals: Grid = Array(cells)
   .fill(null)
-  .map(() => Array(2).fill(false));
+  .map(() => Array(cells - 1).fill(false));
 
-const horizontals: Grid = Array(2)
+const horizontals: Grid = Array(cells - 1)
   .fill(null)
-  .map(() => Array(3).fill(false));
+  .map(() => Array(cells).fill(false));
 
-console.log(grid)
-console.log(horizontals)
-console.log(verticals)
+const startRow: number = Math.floor(Math.random() * cells);
+const startColumn: number = Math.floor(Math.random() * cells);
+
+const stepThroughCell = (row: number, column: number): void => {
+  // If I have visited the cell at [row, column], then return
+  if (grid[row][column]) return;
+
+  // Mark this cell as being visisted
+  grid[row][column] = true;
+
+  // Assemble randomly-ordered list of neighbors
+  const neighbors: NeighborsCoord = shuffle([
+    [row -1, column, 'up'],
+    [row, column + 1, 'right'],
+    [row + 1, column, 'down'],
+    [row, column - 1, 'left']
+  ]);
+
+  // For each neighbor...
+  for (let neighbor of neighbors) {
+    const [nextRow, nextColumn, direction] = neighbor;
+
+    // See if that neighbor is out of bounds
+    if (nextRow < 0 || nextRow >= cells || nextColumn < 0 || nextColumn >= cells) continue;
+
+    // If we have visted that neighbor, contiune to next neighbor
+    if (grid[nextRow][nextColumn]) continue;
+
+    // Remove a wall from either horizontal or verticals
+    if (direction === 'left') {
+      verticals[row][column - 1] = true;
+    } else if (direction === 'right') {
+      verticals[row][column] = true;
+    } else if (direction === 'up') {
+      horizontals[row - 1][column] = true;
+    } else if (direction === 'down') {
+      horizontals[row][column] = true;
+    }
+    stepThroughCell(nextRow, nextColumn);
+  }
+
+  // Visit that next cell
+}; 
+
+stepThroughCell(startRow, startColumn);
+horizontals.forEach((row: boolean[], rowIndex: number) => {
+  row.forEach((open: boolean, columnIndex: number) => {
+    if (open) return;
+
+    const wall = Bodies.rectangle(
+      columnIndex * unitLength + unitLength / 2,
+      rowIndex * unitLength + unitLength,
+      unitLength,
+      10,
+      {
+        isStatic: true
+      }
+    );
+    World.add(world, wall);
+  });
+});
+
+verticals.forEach((row: boolean[], rowIndex: number) => {
+  row.forEach((open: boolean, columnIndex: number) => {
+    if (open) return;
+
+    const wall = Bodies.rectangle(
+      columnIndex * unitLength + unitLength,
+      rowIndex * unitLength + unitLength / 2,
+      10,
+      unitLength,
+      {
+        isStatic: true
+      }
+    );
+    World.add(world, wall);
+  });
+});
